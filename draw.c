@@ -6,7 +6,7 @@
 /*   By: jocorrea <jocorrea@student.42barcel>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/07/29 15:03:04 by jocorrea          #+#    #+#             */
-/*   Updated: 2023/07/29 18:00:34 by jocorrea         ###   ########.fr       */
+/*   Updated: 2023/07/30 15:14:09 by jocorrea         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,64 +18,91 @@ void	isometric(float *x, float *y, float angle, int z)
 	*y = (*x + *y) * sin(angle) - z;
 }
 
-int	bresenham(float x, float y, float x1, float y1, fdf *data)
+void	put_pixel(t_point *p, t_fdf *data)
 {
+	int		max;
 	float	x_step;
 	float	y_step;
-	int		max;
-	int		z;
-	int		z1;
-	
-	z = data->map[(int)y][(int)x];
-	z1 = data->map[(int)y1][(int)x1];
-	//----zoom----
-	x *= data->zoom;
-	y *= data->zoom;
-	x1 *= data->zoom;
-	y1 *= data->zoom;
-	//----color----
-	data->color = (z || z1) ? 0xe80c0c : 0xffffff;
-	//----3d----
-	isometric(&x, &y, data->angle, z);
-	isometric(&x1, &y1, data->angle, z1);
-	//----shift----
-	x += data->shift_x;
-	y += data->shift_y;
-	x1 += data->shift_x;
-	y1 += data->shift_y;
-	// ----step-size---
-	x_step = x1 -x;
-	y_step = y1 -y;
-	max = MAX1(MOD(x_step), MOD(y_step));
+
+	x_step = (p->x1 - p->x);
+	y_step = p->y1 - p->y;
+	max = max1(mod1(x_step), mod1(y_step));
 	x_step /= max;
 	y_step /= max;
-	while ((int)(x -x1) || (int)(y - y1))
+	while ((int)(p->x - p->x1) || (int)(p->y - p->y1))
 	{
-		mlx_pixel_put(data->mlx_ptr, data->win_ptr, x, y, data->color);
-		x += x_step;
-		y += y_step;
+		mlx_pixel_put(data->mlx_ptr, data->win_ptr, p->x, p->y, data->color);
+		p->x += x_step;
+		p->y += y_step;
 	}
+}
+
+int	bresenham(t_point *p, t_fdf *data)
+{
+	int		z;
+	int		z1;
+
+	z = data->map[(int)(p->y)][(int)(p->x)] * data->factor;
+	z1 = data->map[(int)(p->y1)][(int)(p->x1)] * data->factor;
+	p->x *= data->zoom;
+	p->y *= data->zoom;
+	p->x1 *= data->zoom;
+	p->y1 *= data->zoom;
+	data->color = 0xffffff;
+	if (z1 > 0 || z > 0)
+		data->color = 0xe80c0c;
+	else if (z < 0 || z1 < 0)
+		data->color = 0x0000FF;
+	isometric(&(p->x), &(p->y), data->angle, z);
+	isometric(&(p->x1), &(p->y1), data->angle, z1);
+	p->x += data->shift_x;
+	p->y += data->shift_y;
+	p->x1 += data->shift_x;
+	p->y1 += data->shift_y;
+	put_pixel(p, data);
 	return (1);
 }
 
-int	draw(fdf *data)
+void	set_p(int x, int y, t_point *p, t_fdf *data)
 {
-	int	x;
-	int	y;
+	if (x < data->width - 1)
+	{
+		p->x = x;
+		p->y = y;
+		p->x1 = x + 1;
+		p->y1 = y; 
+		bresenham(p, data);
+	}
+	if (y < data->height -1)
+	{
+		p->x = x;
+		p->y = y;
+		p->x1 = x;
+		p->y1 = y + 1; 
+		bresenham(p, data);
+	}
+}
 
+int	draw(t_fdf *data)
+{
+	int		x;
+	int		y;
+	t_point	*p;
+
+	p = (t_point *)malloc(sizeof(t_point));
+	if (!p)
+		return (ft_err("can't make the point"));
 	y = 0;
 	while (y < data->height)
 	{
 		x = 0;
 		while (x < data->width)
 		{
-			if (x < data->width - 1) 
-				bresenham(x, y, (x + 1), y, data);
-			if (y < data->height -1)
-				bresenham(x, y, x, (y + 1), data);
+			set_p(x, y, p, data);
 			x++;
 		}
 		y++;
 	}
+	free(p);
 	return (1);
 }

@@ -6,7 +6,7 @@
 /*   By: jocorrea <jocorrea@student.42barcel>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/07/29 12:29:24 by jocorrea          #+#    #+#             */
-/*   Updated: 2023/07/29 17:58:08 by jocorrea         ###   ########.fr       */
+/*   Updated: 2023/07/30 14:25:51 by jocorrea         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,8 +14,8 @@
 
 static int	ft_count_word(char const *s, char c)
 {
-	int i;
-	int word;
+	int	i;
+	int	word;
 
 	i = 0;
 	word = 0;
@@ -33,14 +33,14 @@ static int	ft_count_word(char const *s, char c)
 	return (word);
 }
 
-int	fill_data(char *file, fdf *data)
+int	fill_data(char *file, t_fdf *data)
 {
 	char	*line;
 	int		fd;
 
 	fd = open(file, O_RDONLY, 0);
 	if (fd < 0)
-		return (-1);
+		return (ft_err("can't open file"));
 	line = get_next_line(fd);
 	data->width = ft_count_word(line, ' ');
 	data->height = 0;
@@ -54,7 +54,7 @@ int	fill_data(char *file, fdf *data)
 	close(fd);
 	data->map = (int **)malloc(sizeof(int *) * (data->height + 1));
 	if (!data->map)
-		return (-1);
+		return (ft_err("can't fill row"));
 	data->map[data->height] = NULL;
 	return (0);
 }
@@ -70,39 +70,49 @@ void	fill_map(int *map, char *line)
 	{
 		map[i] = ft_atoi(nums[i]);
 		free(nums[i]);
-		i++;	   
+		i++;
 	}
 	free(nums);
 }
 
-int	read_file(char *file, fdf *data)
+int	fill_attr_data(int fd, t_fdf *data)
+{
+	char	*line;
+	int		i;
+
+	data->zoom = 20;
+	data->shift_x = 350;
+	data->shift_y = 350;
+	data->angle = 0.56;
+	data->factor = 1;
+	i = 0;
+	line = get_next_line(fd);
+	while (data->map[i])
+	{
+		data->map[i] = (int *)malloc(sizeof(int) * (data->width));
+		if (!(data->map[i]))
+		{
+			map_free(i, data);
+			return (ft_err("can't malloc"));
+		}
+		fill_map(data->map[i++], line);
+		free(line);
+		line = get_next_line(fd);
+	}
+	free(line);
+	return (1);
+}
+
+int	read_file(char *file, t_fdf *data)
 {
 	int		fd;
-	int		i;
-	char	*line;
-	
+
 	if (fill_data(file, data) < 0)
 		return (-1);
 	fd = open(file, O_RDONLY, 0);
 	if (fd < 0)
-		return (-1);
-	i = 0;
-	while (i < data->height)
-			data->map[i++] = (int *)malloc(sizeof(int) * (data->width ));
-	i = 0;
-	line = get_next_line(fd);
-	while (i < data->height)
-	{
-		fill_map(data->map[i], line);
-		free(line);
-		line = get_next_line(fd);
-		i++;
-	}
-	free(line);
+		return (ft_err("can't open file"));
+	fill_attr_data(fd, data);
 	close(fd);
-	data->zoom = 20;
-	data->shift_x = 150;
-	data->shift_y = 150;
-	data->angle = 0.8;
 	return (1);
 }
